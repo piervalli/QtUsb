@@ -3,14 +3,19 @@
 
 /* config.h.  Manual config for MSVC.  */
 
+
+#ifndef __MINGW32__
 #ifndef _MSC_VER
 #warn "msvc/config.h shouldn't be included for your development environment."
 #error "Please make sure the msvc/ directory is removed from your build path."
 #endif
+#endif
 
 /* Visual Studio 2013 or later is required */
+#ifndef __MINGW32__
 #if (_MSC_VER < 1800)
 #error "Visual Studio 2013 or later is required."
+#endif
 #endif
 
 /* Visual Studio 2013 does not support __func__ */

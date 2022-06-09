@@ -3,10 +3,11 @@
 
 #include "qusbglobal.h"
 #include <QList>
-
+#include <QObject>
+#include <QDebug>
 // Stupid windows conflict
 #ifdef interface
-  #undef interface
+#undef interface
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -18,10 +19,9 @@ class Q_USB_EXPORT QUsb : public QObject
     Q_OBJECT
     Q_DECLARE_PRIVATE(QUsb)
 
-    Q_PROPERTY(QUsb::LogLevel logLevel READ logLevel WRITE setLogLevel)
+    Q_PROPERTY(QUsb::LogLevel logLevel READ logLevel WRITE setLogLevel NOTIFY logLevelChanged)
 
 public:
-
     enum LogLevel : quint8 {
         logNone = 0,
         logError = 1,
@@ -87,6 +87,8 @@ Q_SIGNALS:
     void deviceInserted(Id id);
     void deviceRemoved(Id id);
 
+    void logLevelChanged();
+
 public slots:
     bool addDevice(const Id &id);
     bool removeDevice(const Id &id);
@@ -103,6 +105,7 @@ protected:
 private:
     QUsbPrivate *const d_dummy;
     Q_DISABLE_COPY(QUsb)
+    QUsb::LogLevel m_logLevel;
 };
 
 Q_DECLARE_METATYPE(QUsb::Config);

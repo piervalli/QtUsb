@@ -52,8 +52,20 @@ SOURCES += \
     $$PWD/qusbdevice.cpp \
     $$PWD/qhiddevice.cpp
 
-win32 {
+win32-msvc* {
+    MSVC_VER = $$(VisualStudioVersion)
+    equals(MSVC_VER, 14.0){
+        message("msvc 2015")
+    }
     LIBS_PRIVATE += Advapi32.lib Setupapi.lib
+}
+win32 {
+
+  LIBS += -lhid -lsetupapi
+
+}
+win32 {
+    #LIBS_PRIVATE += Advapi32.lib Setupapi.lib
     # Build the hid library ourselves since it's only one file
     HIDAPI_ROOT_REL = $$PWD/../../hidapi
     SOURCES += $$HIDAPI_ROOT_REL/windows/hid.c

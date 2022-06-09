@@ -1,5 +1,5 @@
 TARGET = QtUsb
-QT = core-private
+QT += core-private core
 
 QMAKE_DOCS = $$PWD/doc/qtusb.qdocconf
 
