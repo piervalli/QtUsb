@@ -48,6 +48,7 @@ PRIVATE_HEADERS += \
 
 SOURCES += \
     $$PWD/qusb.cpp \
+    $$PWD/qusbdeviceinfo.cpp \
     $$PWD/qusbendpoint.cpp \
     $$PWD/qusbdevice.cpp \
     $$PWD/qhiddevice.cpp
@@ -136,4 +137,5 @@ else {
     error("Platform unsupported, aborting.")
 }
 
-HEADERS += $$PUBLIC_HEADERS $$PRIVATE_HEADERS
+HEADERS += $$PUBLIC_HEADERS $$PRIVATE_HEADERS \
+  $$PWD/qusbdeviceinfo.h

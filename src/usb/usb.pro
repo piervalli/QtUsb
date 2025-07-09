@@ -1,10 +1,11 @@
 TARGET = QtUsb
+TEMPLATE = lib
 QT += core-private core
 
 QMAKE_DOCS = $$PWD/doc/qtusb.qdocconf
 
 DEFINES += QT_BUILD_USB_LIB
-
+qtusb-static
 CONFIG(qtusb-static) {
     message("Build as static Qt module for $$QMAKE_PLATFORM")
     CONFIG += staticlib qtusb-as-static-module

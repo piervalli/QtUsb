@@ -46,6 +46,9 @@ public:
     libusb_transfer *m_transfer;
     QByteArray m_buf, m_transfer_buf;
     QMutex m_transfer_mutex, m_buf_mutex;
+    qint64 m_pending_transfers=0;
+    qint64 m_total_bytes_queued =0;
+    int chunk_size=64;
 };
 
 QT_END_NAMESPACE

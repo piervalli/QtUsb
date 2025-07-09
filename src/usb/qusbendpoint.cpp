@@ -20,13 +20,13 @@ static void LIBUSB_CALL cb_out(struct libusb_transfer *transfer)
     QUsbEndpointPrivate *endpoint = reinterpret_cast<QUsbEndpointPrivate *>(transfer->user_data);
     DbgPrintCB(endpoint);
 
+
     libusb_transfer_status s = transfer->status;
     const int sent = transfer->actual_length;
-    const int total = transfer->length;
     endpoint->setStatus(static_cast<QUsbEndpoint::Status>(s));
 
-    if (endpoint->logLevel() >= QUsb::logDebug)
-        qDebug("OUT: status = %d, timeout = %d, endpoint = %x, actual_length = %d, length = %d",
+    if (endpoint->logLevel() >= QUsb::logInfo)
+        qInfo("OUT: status = %d, timeout = %d, endpoint = %x, actual_length = %d, length = %d",
                transfer->status,
                transfer->timeout,
                transfer->endpoint,
@@ -34,13 +34,20 @@ static void LIBUSB_CALL cb_out(struct libusb_transfer *transfer)
                transfer->length);
 
     if (sent > 0) {
-        endpoint->m_buf = endpoint->m_buf.mid(0, total - sent); // Remove what was sent
+        endpoint->m_buf.remove(0, sent); // Remove what was sent
+        endpoint->m_pending_transfers-=sent;
     }
 
     // Send remaining data
-    if (total > sent) {
-        transfer->buffer = reinterpret_cast<uchar *>(endpoint->m_buf.data()); // New data pointer
-        transfer->length = endpoint->m_buf.size(); // New size
+    if (endpoint->m_pending_transfers > 0) {
+        QByteArray chunk_buffer;
+        if(endpoint->m_pending_transfers > endpoint->chunk_size){
+            chunk_buffer = endpoint->m_buf.mid(0, endpoint->chunk_size); // what was sent
+        }else {
+            chunk_buffer=endpoint->m_buf;
+        }
+        transfer->buffer = reinterpret_cast<uchar *>(chunk_buffer.data()); // New data pointer
+        transfer->length = chunk_buffer.size(); // New size
         libusb_submit_transfer(transfer);
         return;
     }
@@ -54,7 +61,7 @@ static void LIBUSB_CALL cb_out(struct libusb_transfer *transfer)
         endpoint->error(static_cast<QUsbEndpoint::Status>(s));
     }
     if (sent > 0) {
-        endpoint->bytesWritten(sent);
+        endpoint->bytesWritten(endpoint->m_total_bytes_queued);
     }
 }
 
@@ -271,14 +278,39 @@ int QUsbEndpointPrivate::writeUsb(const char *data, qint64 maxSize)
 {
     Q_Q(QUsbEndpoint);
     DbgPrivPrintFuncName();
+
+    // AGGIUNTA: Incrementa contatori
+    m_pending_transfers = maxSize;
+    m_total_bytes_queued=maxSize;
     int rc;
 
     m_buf_mutex.lock();
     m_buf.resize(static_cast<int>(maxSize));
     memcpy(m_buf.data(), data, static_cast<ulong>(maxSize));
+    QUsbDevice *dev = const_cast<QUsbDevice *>(q->m_dev);
+    // Controlla la velocità del dispositivo
+    switch (dev->speed()) {
+    case QUsbDevice::DeviceSpeed::lowSpeed:
+        chunk_size = 64;
+        break;
+    case QUsbDevice::DeviceSpeed::highSpeed:
+        chunk_size = 512;
+        break;
+    default:
+        if (logLevel() >= QUsb::logInfo)
+            qInfo() << "usb spped" << dev->speed() << dev->speedString();
+        break;
+    }
 
-    if (!prepareTransfer(&m_transfer, cb_out, m_buf.data(), maxSize, q->m_ep))
+    QByteArray chunk_buffer;
+    if(maxSize > chunk_size){
+        chunk_buffer = m_buf.mid(0, chunk_size); // Remove what was sent
+    }else {
+        chunk_buffer=m_buf;
+    }
+    if (!prepareTransfer(&m_transfer, cb_out, chunk_buffer.data(), chunk_buffer.size(), q->m_ep))
         return -1;
+
     rc = libusb_submit_transfer(m_transfer);
 
     if (rc != LIBUSB_SUCCESS) {
@@ -289,6 +321,10 @@ int QUsbEndpointPrivate::writeUsb(const char *data, qint64 maxSize)
         dev->handleUsbError(rc);
         libusb_free_transfer(m_transfer);
         m_transfer = Q_NULLPTR;
+
+        // AGGIUNTA: Decrementa contatori su errore
+        m_pending_transfers--;
+        // Non decrementare m_bytes_queued perché non sono stati inviati
         m_buf_mutex.unlock();
         return rc;
     }

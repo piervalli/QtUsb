@@ -295,7 +295,7 @@ void QUsb::checkDevices()
         monitorDevices(list);
     }
 }
-
+//https://android.googlesource.com/platform/external/libusb/+/refs/heads/master/examples/testlibusb.c
 /*!
     \brief Returns all present \c devices.
  */
@@ -316,16 +316,22 @@ QUsb::IdList QUsb::devices()
         return list;
     }
 
-    for (int i = 0; i < cnt; i++) {
+    for (int i = 0; i < cnt; i++)
+    {
         libusb_device *dev = devs[i];
         libusb_device_descriptor desc;
 
-        if (libusb_get_device_descriptor(dev, &desc) == 0) {
+        if (libusb_get_device_descriptor(dev, &desc) == 0)
+        {
+
+
             QUsb::Id id;
             id.pid = desc.idProduct;
             id.vid = desc.idVendor;
             id.bus = libusb_get_bus_number(dev);
             id.port = libusb_get_port_number(dev);
+            id.dClass = desc.bDeviceClass;
+            id.dSubClass = desc.bDeviceSubClass;
 
             list.append(id);
         }
@@ -403,7 +409,7 @@ bool QUsb::removeDevice(const QUsb::Id &id)
       Return index of the filter, returns -1 if not found.
  */
 int QUsb::findDevice(const QUsb::Id &id,
-                         const QUsb::IdList &list) const
+                     const QUsb::IdList &list) const
 {
     DbgPrintFuncName();
     for (int i = 0; i < list.length(); i++) {

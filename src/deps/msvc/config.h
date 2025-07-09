@@ -28,6 +28,7 @@
 #define _TIMESPEC_DEFINED 1
 #endif
 
+#ifdef _MSC_VER
 /* Disable: warning C4127: conditional expression is constant */
 #pragma warning(disable:4127)
 /* Disable: warning C4200: nonstandard extension used : zero-sized array in struct/union */
@@ -38,6 +39,13 @@
 #pragma warning(disable:4324)
 /* Disable: warning C4996: 'GetVersionExA': was declared deprecated */
 #pragma warning(disable:4996)
+#endif
+
+#ifdef __MINGW32__
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#pragma GCC diagnostic ignored "-Wstringop-overflow="
+#endif
+
 
 #if defined(_PREFAST_)
 /* Disable "Banned API" errors when using the MS's WDK OACR/Prefast */

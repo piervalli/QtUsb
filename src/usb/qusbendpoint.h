@@ -110,6 +110,7 @@ private:
     const QUsbDevice *m_dev;
     const Type m_type;
     const quint8 m_ep;
+
 };
 
 #endif // QUSBENDPOINT_H
