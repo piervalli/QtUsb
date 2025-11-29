@@ -4,6 +4,9 @@
 #if defined(Q_OS_MACOS)
 #include <libusb.h>
 #include <hidapi.h>
+#elif defined(Q_OS_ANDROID)
+#include <libusb.h>
+#include <hidapi.h>
 #elif defined(Q_OS_UNIX)
 #include <libusb-1.0/libusb.h>
 #include <hidapi.h>
@@ -34,6 +37,9 @@ QString QUsbDeviceInfo::deviceInfo(quint16 vid, quint16 pid)
     int r;
     version = libusb_get_version();
     buffer.append(QStringLiteral("Using libusb v%1.%2.%3.%4\n\n").arg(version->major).arg(version->minor).arg(version->micro).arg(version->nano));
+#ifdef Q_OS_ANDROID
+    libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
+#endif
     r = libusb_init(NULL);
     if (r < 0)
         return buffer;
@@ -50,6 +56,9 @@ QUsbDeviceInfo::IdInfoList QUsbDeviceInfo::devices(QList<DeviceClass> filter, bo
     libusb_context *ctx;
     struct hid_device_info *hid_devs, *cur_hid_dev;
 
+#ifdef Q_OS_ANDROID
+    libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
+#endif
     libusb_init(&ctx);
     libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_NONE);
     cnt = libusb_get_device_list(ctx, &devs); // get the list of devices
@@ -307,6 +316,14 @@ QUsbDeviceInfo::IdInfoList QUsbDeviceInfo::devices(QList<DeviceClass> filter, bo
 QString QUsbDeviceInfo::info(quint16 vid, quint16 pid)
 {
     QString buffer;
+#ifdef Q_OS_ANDROID
+    // On Android with NO_DEVICE_DISCOVERY, libusb_open_device_with_vid_pid cannot enumerate devices
+    // Device access must be done through Android UsbManager and file descriptors via JNI
+    buffer.append(QStringLiteral("Device info not available on Android.\n"));
+    buffer.append(QStringLiteral("Use Android UsbManager to access devices.\n"));
+    buffer.append(QStringLiteral("Requested VID:PID = %1:%2\n").arg(QString::number(vid, 16), QString::number(pid, 16)));
+    return buffer;
+#else
     libusb_device_handle *handle;
     libusb_device *dev;
     uint8_t bus, port_path[8];
@@ -343,6 +360,7 @@ QString QUsbDeviceInfo::info(quint16 vid, quint16 pid)
         buffer.append(QStringLiteral("             speed: %1\n").arg(QString::fromUtf8(speed_name[r])));
     }
     return buffer;
+#endif
 }
 
 QUsbDeviceInfo::IdInfo::IdInfo()

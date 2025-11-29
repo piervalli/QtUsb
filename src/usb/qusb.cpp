@@ -1,4 +1,5 @@
 #include "qusb.h"
+#include "hidapi.h"
 #include "qusb_p.h"
 #include <QThread>
 
@@ -224,6 +225,16 @@ QUsb::QUsb(QObject *parent)
     qRegisterMetaType<QUsb::IdList>("QUsb::IdList");
     qRegisterMetaType<QUsb::ConfigList>("QUsb::ConfigList");
 
+#ifdef Q_OS_ANDROID
+    // On Android, we need to disable device discovery to avoid crashes on non-rooted devices
+    // Device access will be handled through Android's UsbManager and file descriptors passed via JNI
+    rc = libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
+    if (rc != LIBUSB_SUCCESS) {
+        if (m_log_level >= QUsb::logWarning)
+            qWarning("Failed to set LIBUSB_OPTION_NO_DEVICE_DISCOVERY: %d", rc);
+    }
+#endif
+
     rc = libusb_init(&d->m_ctx);
     if (rc < 0) {
         libusb_exit(d->m_ctx);
@@ -306,6 +317,11 @@ QUsb::IdList QUsb::devices()
     libusb_device **devs;
     libusb_context *ctx;
     struct hid_device_info *hid_devs, *cur_hid_dev;
+
+#ifdef Q_OS_ANDROID
+    // On Android, disable device discovery to avoid permission issues
+    libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
+#endif
 
     libusb_init(&ctx);
     libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, LIBUSB_LOG_LEVEL_NONE);

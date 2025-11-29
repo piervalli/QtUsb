@@ -90,7 +90,7 @@ Q_SIGNALS:
     void connectionChanged(bool connected);
 
 public slots:
-    qint32 open();
+    qint32 open(int fd=-1);
     void close();
 
 private:

@@ -8,6 +8,8 @@
 #if defined(Q_OS_MACOS)
   #include <libusb.h>
   #include <hidapi.h>
+#elif defined(Q_OS_ANDROID)
+#include <libusb.h>
 #elif defined(Q_OS_UNIX)
   #include <libusb-1.0/libusb.h>
   #include <hidapi.h>

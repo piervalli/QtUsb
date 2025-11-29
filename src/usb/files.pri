@@ -91,6 +91,7 @@ win32 {
 # We build libusb and hidapi ourselves instead of using a library
 else:android {
     LIBUSB_ROOT_REL = $$PWD/../../libusb
+    message(LIBUSB_ROOT_REL $$PWD/../../libusb)
     SOURCES += \
     $$LIBUSB_ROOT_REL/libusb/core.c \
     $$LIBUSB_ROOT_REL/libusb/descriptor.c \
@@ -99,7 +100,7 @@ else:android {
     $$LIBUSB_ROOT_REL/libusb/sync.c \
     $$LIBUSB_ROOT_REL/libusb/strerror.c \
     $$LIBUSB_ROOT_REL/libusb/os/linux_usbfs.c \
-    $$LIBUSB_ROOT_REL/libusb/os/poll_posix.c \
+    $$LIBUSB_ROOT_REL/libusb/os/events_posix.c \
     $$LIBUSB_ROOT_REL/libusb/os/threads_posix.c \
     $$LIBUSB_ROOT_REL/libusb/os/linux_netlink.c
 

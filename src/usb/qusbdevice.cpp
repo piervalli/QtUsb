@@ -1,7 +1,7 @@
 #include "qusbdevice.h"
 #include "qusbdevice_p.h"
 #include <QElapsedTimer>
-
+#include <QDebug>
 #define DbgPrintError() qWarning("In %s, at %s:%d", Q_FUNC_INFO, __FILE__, __LINE__)
 #define DbgPrintPrivFuncName()       \
     if (m_classes.pub->m_log_level >= QUsb::logDebug) \
@@ -32,6 +32,12 @@ static int LIBUSB_CALL DeviceLeftCallback(libusb_context *ctx,
 
 QUsbDevicePrivate::QUsbDevicePrivate()
 {
+#ifdef Q_OS_ANDROID
+    // Use NULL context as m_ctx is not initialized yet.
+    // This option must be set before libusb_init.
+    qDebug() << "QUsbDevicePrivate";
+    libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY, NULL);
+#endif
     int rc = libusb_init(&m_ctx);
     if (rc < 0) {
         qCritical("LibUsb Init Error %d", rc);
@@ -221,7 +227,10 @@ QByteArray QUsbDevice::statusString() const
 
     return "Other error";
 }
-
+/*!
+ * \brief QUsbDevice::handleUsbError
+ * \param error_code
+ */
 void QUsbDevice::handleUsbError(int error_code)
 {
     DbgPrintFuncName();
@@ -235,14 +244,14 @@ void QUsbDevice::handleUsbError(int error_code)
 
 /*!
     \brief Open the device. Returns \c 0 on success
+    \param fd con android deve essere passato il file descriptor altrimenti viene ignorato
  */
-qint32 QUsbDevice::open()
+qint32 QUsbDevice::open(int fd)
 {
     DbgPrintFuncName();
     Q_D(QUsbDevice);
 
     int rc = -5; // Not found by default
-    ssize_t cnt; // holding number of devices in list
     libusb_device *dev = Q_NULLPTR;
 
     if (m_connected)
@@ -252,7 +261,52 @@ qint32 QUsbDevice::open()
         qWarning("No device IDs or classes are defined. Aborting.");
         return -1;
     }
+#ifdef Q_OS_ANDROID
+    if (fd < 0) {
+        if (m_log_level >= QUsb::logError)
+            qCritical("Invalid file descriptor: %d", fd);
+        return -1;
+    }
+    qDebug() << "filedescriptor" << fd;
+    // Use libusb_wrap_sys_device to open the device from file descriptor
+    // Note: We use d->m_ctx instead of NULL (as in libusb Android example) because
+    // QUsbDevicePrivate already has its own initialized context that is used for
+    // event handling, callbacks, etc. Using the same context ensures consistency.
+    rc = libusb_wrap_sys_device(d->m_ctx, (intptr_t)fd, &d->m_devHandle);
+    if (rc != 0 || d->m_devHandle == Q_NULLPTR) {
+        if (m_log_level >= QUsb::logError)
+            qCritical("Failed to wrap file descriptor %d: %s", fd, libusb_strerror(static_cast<enum libusb_error>(rc)));
+        handleUsbError(rc);
+        return rc;
+    }
 
+    if (m_log_level >= QUsb::logInfo)
+        qInfo("Device opened from file descriptor %d", fd);
+
+           // Get device information and update m_id if not set
+    dev = libusb_get_device(d->m_devHandle);
+    if (dev) {
+        libusb_device_descriptor desc;
+        if (libusb_get_device_descriptor(dev, &desc) == 0) {
+            // Update device ID with actual values if not set
+            if (m_id.vid == 0)
+                m_id.vid = desc.idVendor;
+            if (m_id.pid == 0)
+                m_id.pid = desc.idProduct;
+            if (m_id.dClass == 0)
+                m_id.dClass = desc.bDeviceClass;
+            if (m_id.dSubClass == 0)
+                m_id.dSubClass = desc.bDeviceSubClass;
+
+            m_id.bus = libusb_get_bus_number(dev);
+            m_id.port = libusb_get_port_number(dev);
+
+            if (m_log_level >= QUsb::logInfo)
+                qInfo("Device VID:PID = %04x:%04x", m_id.vid, m_id.pid);
+        }
+    }
+#else
+    ssize_t cnt; // holding number of devices in list
     cnt = libusb_get_device_list(d->m_ctx, &d->m_devs); // get the list of devices
     if (cnt < 0) {
         qCritical("libusb_get_device_list error");
@@ -301,7 +355,7 @@ qint32 QUsbDevice::open()
         }
     }
     libusb_free_device_list(d->m_devs, 1); // free the list, unref the devices in it
-
+#endif
     if (rc != 0 || d->m_devHandle == Q_NULLPTR) {
         return rc;
     }
