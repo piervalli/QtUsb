@@ -42,10 +42,10 @@ endif()
 configure_file(qusbglobal.h.in ${CMAKE_CURRENT_SOURCE_DIR}/qusbglobal.h)
 
 # These variables hold all files:
-set(QTUSB_SOURCES         qhiddevice.cpp qusb.cpp qusbdevice.cpp qusbendpoint.cpp)
-set(QTUSB_PUBLIC_HEADERS  qhiddevice.h qusb.h qusbdevice.h qusbendpoint.h qusbglobal.h)
+set(QTUSB_SOURCES         qhiddevice.cpp qusb.cpp qusbdevice.cpp qusbendpoint.cpp qusbdeviceinfo.cpp)
+set(QTUSB_PUBLIC_HEADERS  qhiddevice.h qusb.h qusbdevice.h qusbendpoint.h qusbglobal.h qusbdeviceinfo.h)
 set(QTUSB_PRIVATE_HEADERS qhiddevice_p.h qusb_p.h qusbdevice_p.h qusbendpoint_p.h)
-set(QTUSB_PROXY_HEADERS   extusb/QHidDevice extusb/QUsb extusb/QUsbDevice extusb/QUsbEndpoint extusb/QUsbGlobal)
+set(QTUSB_PROXY_HEADERS   extusb/QHidDevice extusb/QUsb extusb/QUsbDevice extusb/QUsbEndpoint extusb/QUsbGlobal extusb/QUsbDeviceInfo)
 
 # Define the actual targets for building
 if(NOT QTUSB_MODULE)
@@ -98,7 +98,8 @@ else()
         PUBLIC_LIBRARIES         Qt::Core
         PRIVATE_MODULE_INTERFACE Qt::CorePrivate
     )
-  endif()
+
+endif()
 endif()
 
 
@@ -126,12 +127,18 @@ set(QTUSB_EXTRA_WIN32_SOURCES
 )
 
 set(QTUSB_WIN32_DEPS_DIR ${CMAKE_CURRENT_BINARY_DIR}/libinclude)
+if(MSVC)
+  set(QTUSB_WIN32_COMPILER_DEPS_DIR ../deps/msvc)
+else()
+  set(QTUSB_WIN32_COMPILER_DEPS_DIR ../deps/mingw)
+endif()
+
 set(QTUSB_EXTRA_WIN32_INCLUDE_DIRECTORIES
   ${QTUSB_WIN32_DEPS_DIR}/hidapi
   ${QTUSB_WIN32_DEPS_DIR}/hidapi/hidapi
   ${QTUSB_WIN32_DEPS_DIR}/libusb
   ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb
-  ../deps/msvc
+  ${QTUSB_WIN32_COMPILER_DEPS_DIR}
 )
 
 if(WIN32)
@@ -148,7 +155,6 @@ if(WIN32)
   file(MAKE_DIRECTORY ${QTUSB_WIN32_DEPS_DIR}/libusb)
   file(MAKE_DIRECTORY ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb)
   file(MAKE_DIRECTORY ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb/os)
-  configure_file(../../libusb/libusb/hotplug.h              ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb/hotplug.h               COPYONLY)
   configure_file(../../libusb/libusb/libusb.h               ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb/libusb.h                COPYONLY)
   configure_file(../../libusb/libusb/libusbi.h              ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb/libusbi.h               COPYONLY)
   configure_file(../../libusb/libusb/version_nano.h         ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb/version_nano.h          COPYONLY)
@@ -160,10 +166,18 @@ if(WIN32)
   configure_file(../../libusb/libusb/os/windows_winusb.h    ${QTUSB_WIN32_DEPS_DIR}/libusb/libusb/os/windows_winusb.h     COPYONLY)
 endif()
 
-set(QTUSB_EXTRA_WIN32_LIBRARIES
-  Advapi32.lib
-  Setupapi.lib
-)
+if(MSVC)
+  set(QTUSB_EXTRA_WIN32_LIBRARIES
+    Advapi32.lib
+    Setupapi.lib
+  )
+else()
+  # MinGW: no .lib suffix, CMake maps these to -ladvapi32 / -lsetupapi
+  set(QTUSB_EXTRA_WIN32_LIBRARIES
+    advapi32
+    setupapi
+  )
+endif()
 
 set(QTUSB_EXTRA_MACOS_SOURCES
   ../../hidapi/mac/hid.c
