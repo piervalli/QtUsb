@@ -4,6 +4,12 @@
 ## Usb Module:
 #####################################################################
 
+# NDK r22 ships Clang 11 which doesn't know some -Wno-error=X flags that
+# Qt's internal build system injects. Suppress the resulting error.
+if(ANDROID)
+    add_compile_options(-Wno-unknown-warning-option)
+endif()
+
 # User-adjustable options:
 option(QTUSB_MODULE "Build as Qt module rather than a conventional library" ON)
 
@@ -106,7 +112,7 @@ endif()
 ## Scopes:
 #####################################################################
 
-if(UNIX AND NOT MACOS)
+if(UNIX AND NOT MACOS AND NOT ANDROID)
   find_package(Libusb1 REQUIRED)
   find_package(HIDAPI REQUIRED COMPONENTS libusb)
 endif()
@@ -213,7 +219,7 @@ set(QTUSB_EXTRA_ANDROID_SOURCES
   ../../libusb/libusb/io.c
   ../../libusb/libusb/os/linux_netlink.c
   ../../libusb/libusb/os/linux_usbfs.c
-  ../../libusb/libusb/os/poll_posix.c
+  ../../libusb/libusb/os/events_posix.c
   ../../libusb/libusb/os/threads_posix.c
   ../../libusb/libusb/strerror.c
   ../../libusb/libusb/sync.c
@@ -248,16 +254,18 @@ if(QTUSB_AS_STATIC_MODULE OR QTUSB_AS_DYNAMIC_MODULE)
       INCLUDE_DIRECTORIES ${QTUSB_EXTRA_ANDROID_INCLUDE_DIRECTORIES}
       LIBRARIES           ${QTUSB_EXTRA_ANDROID_LIBRARIES})
 
-  # FIXME: files.pri does the following for ANDROID scope:
-  #   # We have to copy the header for includes to work in our library
-  #   system("mkdir -p $$PWD/libusb-1.0 && cp $$LIBUSB_ROOT_REL/libusb/libusb.h $$PWD/libusb-1.0/")
+  # Copy libusb.h into the local libusb-1.0/ dir that is on the Android include path
+  if(ANDROID)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libusb-1.0)
+    configure_file(../../libusb/libusb/libusb.h ${CMAKE_CURRENT_SOURCE_DIR}/libusb-1.0/libusb.h COPYONLY)
+  endif()
 
-  qt_internal_extend_target(Usb CONDITION UNIX AND NOT MACOS LIBRARIES LibUSB1::LibUSB1 HIDAPI::hidapi-libusb)
+  qt_internal_extend_target(Usb CONDITION UNIX AND NOT MACOS AND NOT ANDROID LIBRARIES LibUSB1::LibUSB1 HIDAPI::hidapi-libusb)
 
   qt_internal_add_docs(Usb doc/qtusb.qdocconf)
 else()
   # What follows is a poor man's implementation of qt_internal_extend_target():
-  if(UNIX AND NOT MACOS)
+  if(UNIX AND NOT MACOS AND NOT ANDROID)
     target_link_libraries(${QTUSB_LIB_NAME}      PRIVATE LibUSB1::LibUSB1 HIDAPI::hidapi-libusb)
   endif()
 

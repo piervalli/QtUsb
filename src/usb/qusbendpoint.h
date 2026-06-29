@@ -1,8 +1,8 @@
 #ifndef QUSBENDPOINT_H
 #define QUSBENDPOINT_H
 
-#include "qusbdevice.h"
-#include "qusb.h"
+#include <QtUsb/qusbdevice.h>
+#include <QtUsb/qusb.h>
 #include <QIODevice>
 #include <QObject>
 

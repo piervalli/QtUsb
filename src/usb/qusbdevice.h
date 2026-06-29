@@ -1,8 +1,8 @@
 #ifndef QUSBDEVICE_H
 #define QUSBDEVICE_H
 
-#include "qusbglobal.h"
-#include "qusb.h"
+#include <QtUsb/qusbglobal.h>
+#include <QtUsb/qusb.h>
 #include <QByteArray>
 #include <QDebug>
 #include <QString>
@@ -89,8 +89,8 @@ Q_SIGNALS:
     void statusChanged(QUsbDevice::DeviceStatus status);
     void connectionChanged(bool connected);
 
-public Q_SLOTS:
-    qint32 open();
+public slots:
+    qint32 open(int fd=-1);
     void close();
 
 private:

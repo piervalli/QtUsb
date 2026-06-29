@@ -1,7 +1,7 @@
 #ifndef QUSB_H
 #define QUSB_H
 
-#include "qusbglobal.h"
+#include <QtUsb/qusbglobal.h>
 #include <QList>
 
 // Stupid windows conflict

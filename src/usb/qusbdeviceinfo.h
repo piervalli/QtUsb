@@ -3,7 +3,7 @@
 
 #include <QObject>
 #include "qobjectdefs.h"
-#include "qusbglobal.h"
+#include <QtUsb/qusbglobal.h>
 
 QT_BEGIN_NAMESPACE
 

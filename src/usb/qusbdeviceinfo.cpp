@@ -67,6 +67,7 @@ QUsbDeviceInfo::IdInfoList QUsbDeviceInfo::devices(QList<DeviceClass> filter, bo
         libusb_free_device_list(devs, 1);
         return list;
     }
+#if defined(Q_OS_WIN)
     auto match_vid_pid = [](const QString& hardware_id, quint16& avid, quint16& apid){
         quint16 vid = 0;
         quint16 pid = 0;
@@ -85,6 +86,7 @@ QUsbDeviceInfo::IdInfoList QUsbDeviceInfo::devices(QList<DeviceClass> filter, bo
         // qCritical() << hardware_id << "vid" << avid << vid << "pid"<<apid <<  pid;
         return avid ==vid && apid==pid; // No match found
     };
+#endif
     for (int i = 0; i < cnt; i++)
     {
         libusb_device *dev = devs[i];
