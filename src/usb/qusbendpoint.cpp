@@ -38,8 +38,9 @@ static void LIBUSB_CALL cb_out(struct libusb_transfer *transfer)
         endpoint->m_pending_transfers-=sent;
     }
 
-    // Send remaining data
-    if (endpoint->m_pending_transfers > 0) {
+    // Only successful partial transfers can be resubmitted. Errors and
+    // cancellations must release the transfer so close() can finish.
+    if (s == LIBUSB_TRANSFER_COMPLETED && endpoint->m_pending_transfers > 0) {
         QByteArray chunk_buffer;
         if(endpoint->m_pending_transfers > endpoint->chunk_size){
             chunk_buffer = endpoint->m_buf.mid(0, endpoint->chunk_size); // what was sent
@@ -48,8 +49,11 @@ static void LIBUSB_CALL cb_out(struct libusb_transfer *transfer)
         }
         transfer->buffer = reinterpret_cast<uchar *>(chunk_buffer.data()); // New data pointer
         transfer->length = chunk_buffer.size(); // New size
-        libusb_submit_transfer(transfer);
-        return;
+        const int result = libusb_submit_transfer(transfer);
+        if (result == LIBUSB_SUCCESS)
+            return;
+        s = result == LIBUSB_ERROR_NO_DEVICE ? LIBUSB_TRANSFER_NO_DEVICE : LIBUSB_TRANSFER_ERROR;
+        endpoint->setStatus(static_cast<QUsbEndpoint::Status>(s));
     }
 
     libusb_free_transfer(transfer);

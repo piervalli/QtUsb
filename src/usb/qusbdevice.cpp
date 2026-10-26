@@ -439,7 +439,8 @@ void QUsbDevice::close()
 
         libusb_release_interface(d->m_devHandle, 0); // release the claimed interface
         libusb_close(d->m_devHandle); // close the device we opened
-        d->m_events->exit(0); // stop event handling thread
+        // run() polls isInterruptionRequested(); exit() does not stop this loop.
+        d->m_events->requestInterruption();
         d->m_events->wait();
         d->m_devHandle = Q_NULLPTR;
         m_connected = false;
@@ -556,12 +557,12 @@ void QUsbEventsThread::run()
 {
     timeval t = { 0, 100000 };
     while (!this->isInterruptionRequested()) {
-        if (libusb_event_handling_ok(m_ctx) == 0) {
-            libusb_unlock_events(m_ctx);
+        // This API manages the events lock internally. Never unlock it here:
+        // this thread has not acquired it with libusb_lock_events/try_lock_events.
+        const int result = libusb_handle_events_timeout_completed(m_ctx, &t, Q_NULLPTR);
+        if (result == LIBUSB_ERROR_INTERRUPTED)
+            continue;
+        if (result != LIBUSB_SUCCESS)
             break;
-        }
-        if (libusb_handle_events_timeout_completed(m_ctx, &t, Q_NULLPTR) != 0) {
-            break;
-        }
     }
 }
