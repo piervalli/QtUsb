@@ -40,12 +40,16 @@ static void LIBUSB_CALL cb_out(struct libusb_transfer *transfer)
         endpoint->m_buf = endpoint->m_buf.mid(0, total - sent); // Remove what was sent
     }
 
-    // Send remaining data
-    if (total > sent) {
+    // Only a successful partial transfer may be submitted again. Error and
+    // cancellation callbacks must release the transfer so close() can finish.
+    if (s == LIBUSB_TRANSFER_COMPLETED && total > sent) {
         transfer->buffer = reinterpret_cast<uchar *>(endpoint->m_buf.data()); // New data pointer
         transfer->length = endpoint->m_buf.size(); // New size
-        libusb_submit_transfer(transfer);
-        return;
+        const int result = libusb_submit_transfer(transfer);
+        if (result == LIBUSB_SUCCESS)
+            return;
+        s = result == LIBUSB_ERROR_NO_DEVICE ? LIBUSB_TRANSFER_NO_DEVICE : LIBUSB_TRANSFER_ERROR;
+        endpoint->setStatus(static_cast<QUsbEndpoint::Status>(s));
     }
 
     libusb_free_transfer(transfer);
